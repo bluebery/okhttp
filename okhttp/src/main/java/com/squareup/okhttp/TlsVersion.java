@@ -35,12 +35,10 @@ public enum TlsVersion {
   }
 
   public static TlsVersion forJavaName(String javaName) {
-    switch (javaName) {
-      case "TLSv1.2": return TLS_1_2;
-      case "TLSv1.1": return TLS_1_1;
-      case "TLSv1": return TLS_1_0;
-      case "SSLv3": return SSL_3_0;
-    }
+	  if (javaName.equalsIgnoreCase("TLSv1.2")) return TLS_1_2;
+	  else if (javaName.equalsIgnoreCase("TLSv1.1")) return TLS_1_1;
+	  else if (javaName.equalsIgnoreCase("TLSv1")) return TLS_1_0;
+	  else if (javaName.equalsIgnoreCase("SSLv3")) return SSL_3_0;
     throw new IllegalArgumentException("Unexpected TLS version: " + javaName);
   }
 }

@@ -147,8 +147,8 @@ public class OkHttpClient implements Cloneable {
   private Proxy proxy;
   private List<Protocol> protocols;
   private List<ConnectionSpec> connectionSpecs;
-  private final List<Interceptor> interceptors = new ArrayList<>();
-  private final List<Interceptor> networkInterceptors = new ArrayList<>();
+  private final List<Interceptor> interceptors = new ArrayList<Interceptor>();
+  private final List<Interceptor> networkInterceptors = new ArrayList<Interceptor>();
   private ProxySelector proxySelector;
   private CookieHandler cookieHandler;
 
@@ -203,9 +203,9 @@ public class OkHttpClient implements Cloneable {
   }
 
   /**
-   * Sets the default connect timeout for new connections. A value of 0 means no timeout, otherwise
-   * values must be between 1 and {@link Integer#MAX_VALUE} when converted to milliseconds.
-   *
+   * Sets the default connect timeout for new connections. A value of 0 means no timeout.
+   * Sets the default write timeout for new connections. A value of 0 means no timeout, otherwise values must
+   * be between 1 and {@link Integer#MAX_VALUE} when converted to milliseconds.
    * @see URLConnection#setConnectTimeout(int)
    */
   public final void setConnectTimeout(long timeout, TimeUnit unit) {
@@ -223,9 +223,9 @@ public class OkHttpClient implements Cloneable {
   }
 
   /**
-   * Sets the default read timeout for new connections. A value of 0 means no timeout, otherwise
-   * values must be between 1 and {@link Integer#MAX_VALUE} when converted to milliseconds.
-   *
+   * Sets the default read timeout for new connections. A value of 0 means no timeout.
+   * Sets the default write timeout for new connections. A value of 0 means no timeout, otherwise values must
+   * be between 1 and {@link Integer#MAX_VALUE} when converted to milliseconds.
    * @see URLConnection#setReadTimeout(int)
    */
   public final void setReadTimeout(long timeout, TimeUnit unit) {
@@ -243,8 +243,9 @@ public class OkHttpClient implements Cloneable {
   }
 
   /**
-   * Sets the default write timeout for new connections. A value of 0 means no timeout, otherwise
-   * values must be between 1 and {@link Integer#MAX_VALUE} when converted to milliseconds.
+   * Sets the default write timeout for new connections. A value of 0 means no timeout.
+   * Sets the default write timeout for new connections. A value of 0 means no timeout, otherwise values must
+   * be between 1 and {@link Integer#MAX_VALUE} when converted to milliseconds.
    */
   public final void setWriteTimeout(long timeout, TimeUnit unit) {
     if (timeout < 0) throw new IllegalArgumentException("timeout < 0");

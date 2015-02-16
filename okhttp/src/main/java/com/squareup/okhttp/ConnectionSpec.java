@@ -238,20 +238,19 @@ public final class ConnectionSpec {
       for (int i = 0; i < cipherSuites.length; i++) {
         strings[i] = cipherSuites[i].javaName;
       }
+
       this.cipherSuites = strings;
       return this;
     }
 
-    public Builder cipherSuites(String... cipherSuites) {
-      if (!tls) throw new IllegalStateException("no cipher suites for cleartext connections");
-
-      if (cipherSuites == null) {
-        this.cipherSuites = null;
-      } else {
-        // This makes a defensive copy!
-        this.cipherSuites = cipherSuites.clone();
-      }
-
+   public Builder cipherSuites(String... cipherSuites) {
+       if (!tls) throw new IllegalStateException("no cipher suites for cleartext connections");
+       if (cipherSuites == null) {
+           this.cipherSuites = null;
+       } else {
+           // This makes a defensive copy!
+           this.cipherSuites = cipherSuites.clone();
+       }
       return this;
     }
 
@@ -263,22 +262,21 @@ public final class ConnectionSpec {
       for (int i = 0; i < tlsVersions.length; i++) {
         strings[i] = tlsVersions[i].javaName;
       }
-      this.tlsVersions = strings;
-      return this;
+        this.tlsVersions = strings;
+        return this;
     }
-
+      
     public Builder tlsVersions(String... tlsVersions) {
-      if (!tls) throw new IllegalStateException("no TLS versions for cleartext connections");
-
-      if (tlsVersions == null) {
-        this.tlsVersions = null;
-      } else {
-        // This makes a defensive copy!
-        this.tlsVersions = tlsVersions.clone();
-      }
-
-      return this;
-    }
+        if (!tls) throw new IllegalStateException("no TLS versions for cleartext connections");
+        if (tlsVersions == null) {
+            this.tlsVersions = null;
+        } else {
+            // This makes a defensive copy!
+            this.tlsVersions = tlsVersions.clone();
+        }
+        
+        return this;
+   }
 
     public Builder supportsTlsExtensions(boolean supportsTlsExtensions) {
       if (!tls) throw new IllegalStateException("no TLS extensions for cleartext connections");

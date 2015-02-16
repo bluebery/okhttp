@@ -72,7 +72,7 @@ public final class RouteSelector {
   private int nextSpecIndex;
 
   /* State for negotiating failed routes */
-  private final List<Route> postponedRoutes = new ArrayList<>();
+  private final List<Route> postponedRoutes = new ArrayList<Route>();
 
   private RouteSelector(Address address, URI uri, OkHttpClient client, Request request) {
     this.address = address;
@@ -169,7 +169,7 @@ public final class RouteSelector {
     } else {
       // Try each of the ProxySelector choices until one connection succeeds. If none succeed
       // then we'll try a direct connection below.
-      proxies = new ArrayList<>();
+      proxies = new ArrayList<Proxy>();
       List<Proxy> selectedProxies = client.getProxySelector().select(uri);
       if (selectedProxies != null) proxies.addAll(selectedProxies);
       // Finally try a direct connection. We only try it once!
@@ -198,7 +198,7 @@ public final class RouteSelector {
   /** Prepares the socket addresses to attempt for the current proxy or host. */
   private void resetNextInetSocketAddress(Proxy proxy) throws UnknownHostException {
     // Clear the addresses. Necessary if getAllByName() below throws!
-    inetSocketAddresses = new ArrayList<>();
+    inetSocketAddresses = new ArrayList<InetSocketAddress>();
 
     String socketHost;
     int socketPort;
@@ -259,7 +259,7 @@ public final class RouteSelector {
 
   /** Prepares the connection specs to attempt. */
   private void resetConnectionSpecs() {
-    connectionSpecs = new ArrayList<>();
+    connectionSpecs = new ArrayList<ConnectionSpec>();
     List<ConnectionSpec> specs = address.getConnectionSpecs();
     for (int i = 0, size = specs.size(); i < size; i++) {
       ConnectionSpec spec = specs.get(i);
@@ -279,12 +279,12 @@ public final class RouteSelector {
   private ConnectionSpec nextConnectionSpec() throws IOException {
     if (connectionSpecs.isEmpty()) {
       throw new UnknownServiceException("No route to "
-          + ((uri.getScheme() != null) ? (uri.getScheme() + "://") : "//") + address.getUriHost()
-          + "; no connection specs");
+                                        + ((uri.getScheme() != null) ? (uri.getScheme() + "://") : "//") + address.getUriHost()
+                                        + "; no connection specs");
     }
     if (!hasNextConnectionSpec()) {
       throw new SocketException("No route to "
-          + ((uri.getScheme() != null) ? (uri.getScheme() + "://") : "//") + address.getUriHost()
+                                + ((uri.getScheme() != null) ? (uri.getScheme() + "://") : "//") + address.getUriHost()
           + "; exhausted connection specs: " + connectionSpecs);
     }
     return connectionSpecs.get(nextSpecIndex++);
