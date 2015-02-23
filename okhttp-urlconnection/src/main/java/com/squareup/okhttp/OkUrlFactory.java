@@ -68,7 +68,7 @@ public final class OkUrlFactory implements URLStreamHandlerFactory, Cloneable {
    *   URL.setURLStreamHandlerFactory(new OkUrlFactory(okHttpClient));
    * }</pre>
    */
-  @Override public URLStreamHandler createURLStreamHandler(final String protocol) {
+  public URLStreamHandler createURLStreamHandler(final String protocol) {
     if (!protocol.equals("http") && !protocol.equals("https")) return null;
 
     return new URLStreamHandler() {
