@@ -34,6 +34,7 @@ import com.squareup.okhttp.internal.http.HttpMethod;
 import com.squareup.okhttp.internal.http.OkHeaders;
 import com.squareup.okhttp.internal.http.RetryableSink;
 import com.squareup.okhttp.internal.http.StatusLine;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
 import okio.BufferedSink;
 import okio.Sink;
 
@@ -71,7 +73,7 @@ import okio.Sink;
  * header fields, request method, etc.) are immutable.
  */
 public class HttpURLConnectionImpl extends HttpURLConnection {
-  private static final Set<String> METHODS = new LinkedHashSet<>(
+  private static final Set<String> METHODS = new LinkedHashSet<String>(
       Arrays.asList("OPTIONS", "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "PATCH"));
 
   final OkHttpClient client;
@@ -537,7 +539,7 @@ public class HttpURLConnectionImpl extends HttpURLConnection {
    * defined in {@link Protocol OkHttp's protocol enumeration}.
    */
   private void setProtocols(String protocolsString, boolean append) {
-    List<Protocol> protocolsList = new ArrayList<>();
+    List<Protocol> protocolsList = new ArrayList<Protocol>();
     if (append) {
       protocolsList.addAll(client.getProtocols());
     }
@@ -562,7 +564,7 @@ public class HttpURLConnectionImpl extends HttpURLConnection {
     setFixedLengthStreamingMode((long) contentLength);
   }
 
-  @Override public void setFixedLengthStreamingMode(long contentLength) {
+  public void setFixedLengthStreamingMode(long contentLength) {
     if (super.connected) throw new IllegalStateException("Already connected");
     if (chunkLength > 0) throw new IllegalStateException("Already in chunked mode");
     if (contentLength < 0) throw new IllegalArgumentException("contentLength < 0");

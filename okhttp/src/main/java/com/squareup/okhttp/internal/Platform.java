@@ -16,7 +16,7 @@
  */
 package com.squareup.okhttp.internal;
 
-import android.annotation.SuppressLint;
+
 import com.squareup.okhttp.Protocol;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
@@ -205,7 +205,6 @@ public class Platform {
       SET_ALPN_PROTOCOLS.invokeWithoutCheckedException(sslSocket, parameters);
     }
 
-	@SuppressLint("NewApi")
 	@Override public String getSelectedProtocol(SSLSocket socket) {
       boolean alpnSupported = GET_ALPN_SELECTED_PROTOCOL.isSupported(socket);
       if (!alpnSupported) {
