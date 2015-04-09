@@ -15,9 +15,11 @@
  */
 package com.squareup.okhttp.internal.ws;
 
+import com.squareup.okhttp.ws.WebSocketRecorder;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.util.Random;
+import java.util.concurrent.Executor;
 import okio.Buffer;
 import okio.BufferedSink;
 import okio.ByteString;
@@ -25,19 +27,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.squareup.okhttp.internal.ws.WebSocket.PayloadType.BINARY;
-import static com.squareup.okhttp.internal.ws.WebSocket.PayloadType.TEXT;
+import static com.squareup.okhttp.ws.WebSocket.PayloadType.BINARY;
+import static com.squareup.okhttp.ws.WebSocket.PayloadType.TEXT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public final class RealWebSocketTest {
-  // NOTE: Types are named 'client' and 'server' for cognitive simplicity. This differentiation has
+  // NOTE: Fields are named 'client' and 'server' for cognitive simplicity. This differentiation has
   // zero effect on the behavior of the WebSocket API which is why tests are only written once
   // from the perspective of a single peer.
 
   private RealWebSocket client;
+  private boolean clientConnectionCloseThrows;
   private boolean clientConnectionClosed;
   private final Buffer client2Server = new Buffer();
   private final WebSocketRecorder clientListener = new WebSocketRecorder();
@@ -48,15 +51,25 @@ public final class RealWebSocketTest {
 
   @Before public void setUp() {
     Random random = new Random(0);
+    String url = "http://example.com/websocket";
 
-    client = new RealWebSocket(true, server2client, client2Server, random, clientListener,
-        "http://example.com/websocket") {
-      @Override protected void closeConnection() throws IOException {
-        clientConnectionClosed = true;
+    Executor synchronousExecutor = new Executor() {
+      @Override public void execute(Runnable command) {
+        command.run();
       }
     };
-    server = new RealWebSocket(false, client2Server, server2client, random, serverListener,
-        "http://example.com/websocket") {
+
+    client = new RealWebSocket(true, server2client, client2Server, random, synchronousExecutor,
+        clientListener, url) {
+      @Override protected void closeConnection() throws IOException {
+        clientConnectionClosed = true;
+        if (clientConnectionCloseThrows) {
+          throw new IOException("Oops!");
+        }
+      }
+    };
+    server = new RealWebSocket(false, client2Server, server2client, random, synchronousExecutor,
+        serverListener, url) {
       @Override protected void closeConnection() throws IOException {
       }
     };
@@ -96,16 +109,14 @@ public final class RealWebSocketTest {
     sink.close();
     server.readMessage();
     serverListener.assertTextMessage("Hello!");
-    Thread.sleep(1000); // Wait for pong to be written.
     client.readMessage();
     clientListener.assertPong(new Buffer().writeUtf8("Pong?"));
   }
 
   @Test public void pingWritesPong() throws IOException, InterruptedException {
     client.sendPing(new Buffer().writeUtf8("Hello!"));
-    server.readMessage(); // Read the ping, enqueue the pong.
-    Thread.sleep(1000); // Wait for pong to be written.
-    client.readMessage();
+    server.readMessage(); // Read the ping, write the pong.
+    client.readMessage(); // Read the pong.
     clientListener.assertPong(new Buffer().writeUtf8("Hello!"));
   }
 
@@ -130,25 +141,25 @@ public final class RealWebSocketTest {
       client.sendPing(new Buffer().writeUtf8("Pong?"));
       fail();
     } catch (IllegalStateException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
     try {
       client.close(1000, "Hello!");
       fail();
     } catch (IllegalStateException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
     try {
       client.sendMessage(TEXT, new Buffer().writeUtf8("Hello!"));
       fail();
     } catch (IllegalStateException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
     try {
       client.newMessageSink(TEXT);
       fail();
     } catch (IllegalStateException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
   }
 
@@ -161,19 +172,19 @@ public final class RealWebSocketTest {
       client.sendPing(new Buffer().writeUtf8("Pong?"));
       fail();
     } catch (IOException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
     try {
       client.sendMessage(TEXT, new Buffer().writeUtf8("Hi!"));
       fail();
     } catch (IOException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
     try {
       client.close(1000, "Bye!");
       fail();
     } catch (IOException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
   }
 
@@ -190,20 +201,20 @@ public final class RealWebSocketTest {
       sink.writeUtf8("lo!").emit(); // No writing to the underlying sink.
       fail();
     } catch (IOException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
       sink.buffer().clear();
     }
     try {
       sink.flush(); // No flushing.
       fail();
     } catch (IOException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
     try {
       sink.close(); // No closing because this requires writing a frame.
       fail();
     } catch (IOException e) {
-      assertEquals("Closed", e.getMessage());
+      assertEquals("closed", e.getMessage());
     }
   }
 
@@ -276,5 +287,17 @@ public final class RealWebSocketTest {
 
     server.readMessage();
     serverListener.assertClose(1000, "Hello!");
+  }
+
+  @Test public void peerConnectionCloseThrowingDoesNotPropagate() throws IOException {
+    clientConnectionCloseThrows = true;
+
+    server.close(1000, "Bye!");
+    client.readMessage();
+    clientListener.assertClose(1000, "Bye!");
+    assertTrue(clientConnectionClosed);
+
+    server.readMessage();
+    serverListener.assertClose(1000, "Bye!");
   }
 }

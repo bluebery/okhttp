@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.squareup.okhttp.internal.ws;
+package com.squareup.okhttp.ws;
 
 import com.squareup.okhttp.Call;
 import com.squareup.okhttp.Callback;
@@ -24,25 +24,29 @@ import com.squareup.okhttp.Response;
 import com.squareup.okhttp.internal.Internal;
 import com.squareup.okhttp.internal.NamedRunnable;
 import com.squareup.okhttp.internal.Util;
+import com.squareup.okhttp.internal.ws.RealWebSocket;
+import com.squareup.okhttp.internal.ws.WebSocketProtocol;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.net.Socket;
 import java.security.SecureRandom;
 import java.util.Collections;
 import java.util.Random;
+import java.util.concurrent.Executor;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
 import okio.BufferedSink;
 import okio.BufferedSource;
 import okio.ByteString;
 import okio.Okio;
 
-// TODO move to public API!
-public class WebSocketCall {
+import static java.util.concurrent.TimeUnit.SECONDS;
+
+public final class WebSocketCall {
   /**
    * Prepares the {@code request} to create a web socket at some point in the future.
-   * <p>
-   * TODO Move to OkHttpClient as non-static once web sockets are finalized!
    */
-  public static WebSocketCall newWebSocketCall(OkHttpClient client, Request request) {
+  public static WebSocketCall create(OkHttpClient client, Request request) {
     return new WebSocketCall(client, request);
   }
 
@@ -51,7 +55,7 @@ public class WebSocketCall {
   private final Random random;
   private final String key;
 
-  protected WebSocketCall(OkHttpClient client, Request request) {
+  WebSocketCall(OkHttpClient client, Request request) {
     this(client, request, new SecureRandom());
   }
 
@@ -175,7 +179,7 @@ public class WebSocketCall {
     BufferedSink sink = Okio.buffer(Okio.sink(socket));
 
     final RealWebSocket webSocket =
-        new ConnectionWebSocket(response, connection, source, sink, random, listener);
+        ConnectionWebSocket.create(response, connection, source, sink, random, listener);
 
     // Start a dedicated thread for reading the web socket.
     new Thread(new NamedRunnable("OkHttp WebSocket reader %s", request.urlString()) {
@@ -193,11 +197,23 @@ public class WebSocketCall {
 
   // Keep static so that the WebSocketCall instance can be garbage collected.
   private static class ConnectionWebSocket extends RealWebSocket {
+    static RealWebSocket create(Response response, Connection connection, BufferedSource source,
+        BufferedSink sink, Random random, WebSocketListener listener) {
+      String url = response.request().urlString();
+      ThreadPoolExecutor replyExecutor =
+          new ThreadPoolExecutor(1, 1, 1, SECONDS, new LinkedBlockingDeque<Runnable>(),
+              Util.threadFactory(String.format("OkHttp %s WebSocket", url), true));
+      replyExecutor.allowCoreThreadTimeOut(true);
+
+      return new ConnectionWebSocket(connection, source, sink, random, replyExecutor, listener,
+          url);
+    }
+
     private final Connection connection;
 
-    public ConnectionWebSocket(Response response, Connection connection, BufferedSource source,
-        BufferedSink sink, Random random, WebSocketListener listener) {
-      super(true /* is client */, source, sink, random, listener, response.request().urlString());
+    private ConnectionWebSocket(Connection connection, BufferedSource source, BufferedSink sink,
+        Random random, Executor replyExecutor, WebSocketListener listener, String url) {
+      super(true /* is client */, source, sink, random, replyExecutor, listener, url);
       this.connection = connection;
     }
 

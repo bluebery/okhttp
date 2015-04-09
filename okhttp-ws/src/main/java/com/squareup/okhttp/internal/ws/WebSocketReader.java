@@ -24,7 +24,7 @@ import okio.Okio;
 import okio.Source;
 import okio.Timeout;
 
-import static com.squareup.okhttp.internal.ws.WebSocket.PayloadType;
+import static com.squareup.okhttp.ws.WebSocket.PayloadType;
 import static com.squareup.okhttp.internal.ws.WebSocketProtocol.B0_FLAG_FIN;
 import static com.squareup.okhttp.internal.ws.WebSocketProtocol.B0_FLAG_RSV1;
 import static com.squareup.okhttp.internal.ws.WebSocketProtocol.B0_FLAG_RSV2;
@@ -53,7 +53,7 @@ public final class WebSocketReader {
     void onMessage(BufferedSource source, PayloadType type) throws IOException;
     void onPing(Buffer buffer);
     void onPong(Buffer buffer);
-    void onClose(int code, String reason) throws IOException;
+    void onClose(int code, String reason);
   }
 
   private final boolean isClient;
@@ -77,8 +77,8 @@ public final class WebSocketReader {
   private final byte[] maskBuffer = new byte[2048];
 
   public WebSocketReader(boolean isClient, BufferedSource source, FrameCallback frameCallback) {
-    if (source == null) throw new NullPointerException("source");
-    if (frameCallback == null) throw new NullPointerException("frameCallback");
+    if (source == null) throw new NullPointerException("source == null");
+    if (frameCallback == null) throw new NullPointerException("frameCallback == null");
     this.isClient = isClient;
     this.source = source;
     this.frameCallback = frameCallback;
@@ -103,7 +103,7 @@ public final class WebSocketReader {
   }
 
   private void readHeader() throws IOException {
-    if (closed) throw new IOException("Closed");
+    if (closed) throw new IOException("closed");
 
     int b0 = source.readByte() & 0xff;
 
@@ -135,9 +135,13 @@ public final class WebSocketReader {
     // Get frame length, optionally reading from follow-up bytes if indicated by special values.
     frameLength = b1 & B1_MASK_LENGTH;
     if (frameLength == PAYLOAD_SHORT) {
-      frameLength = source.readShort();
+      frameLength = source.readShort() & 0xffffL; // Value is unsigned.
     } else if (frameLength == PAYLOAD_LONG) {
       frameLength = source.readLong();
+      if (frameLength < 0) {
+        throw new ProtocolException(
+            "Frame length 0x" + Long.toHexString(frameLength) + " > 0x7FFFFFFFFFFFFFFF");
+      }
     }
     frameBytesRead = 0;
 
@@ -230,8 +234,8 @@ public final class WebSocketReader {
    */
   private final class FramedMessageSource implements Source {
     @Override public long read(Buffer sink, long byteCount) throws IOException {
-      if (closed) throw new IOException("Closed");
-      if (messageClosed) throw new IllegalStateException("Closed");
+      if (closed) throw new IOException("closed");
+      if (messageClosed) throw new IllegalStateException("closed");
 
       if (frameBytesRead == frameLength) {
         if (isFinalFrame) return -1; // We are exhausted and have no continuations.

@@ -15,6 +15,7 @@
  */
 package com.squareup.okhttp.internal.ws;
 
+import com.squareup.okhttp.ws.WebSocketRecorder;
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.ProtocolException;
@@ -26,13 +27,13 @@ import okio.ByteString;
 import org.junit.After;
 import org.junit.Test;
 
-import static com.squareup.okhttp.internal.ws.WebSocket.PayloadType;
-import static com.squareup.okhttp.internal.ws.WebSocketRecorder.MessageDelegate;
+import static com.squareup.okhttp.ws.WebSocket.PayloadType;
+import static com.squareup.okhttp.ws.WebSocketRecorder.MessageDelegate;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-public class WebSocketReaderTest {
+public final class WebSocketReaderTest {
   private final Buffer data = new Buffer();
   private final WebSocketRecorder callback = new WebSocketRecorder();
   private final Random random = new Random(0);
@@ -121,6 +122,28 @@ public class WebSocketReaderTest {
     data.write(ByteString.decodeHex("818537fa213d7f9f4d5158")); // Hello
     serverReader.processNextFrame();
     callback.assertTextMessage("Hello");
+  }
+
+  @Test public void clientFramePayloadShort() throws IOException {
+    data.write(ByteString.decodeHex("817E000548656c6c6f")); // Hello
+    clientReader.processNextFrame();
+    callback.assertTextMessage("Hello");
+  }
+
+  @Test public void clientFramePayloadLong() throws IOException {
+    data.write(ByteString.decodeHex("817f000000000000000548656c6c6f")); // Hello
+    clientReader.processNextFrame();
+    callback.assertTextMessage("Hello");
+  }
+
+  @Test public void clientFramePayloadTooLongThrows() throws IOException {
+    data.write(ByteString.decodeHex("817f8000000000000000"));
+    try {
+      clientReader.processNextFrame();
+      fail();
+    } catch (ProtocolException e) {
+      assertEquals("Frame length 0x8000000000000000 > 0x7FFFFFFFFFFFFFFF", e.getMessage());
+    }
   }
 
   @Test public void serverHelloTwoChunks() throws IOException {

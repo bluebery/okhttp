@@ -24,7 +24,7 @@ import okio.Okio;
 import okio.Sink;
 import okio.Timeout;
 
-import static com.squareup.okhttp.internal.ws.WebSocket.PayloadType;
+import static com.squareup.okhttp.ws.WebSocket.PayloadType;
 import static com.squareup.okhttp.internal.ws.WebSocketProtocol.B0_FLAG_FIN;
 import static com.squareup.okhttp.internal.ws.WebSocketProtocol.B1_FLAG_MASK;
 import static com.squareup.okhttp.internal.ws.WebSocketProtocol.OPCODE_BINARY;
@@ -62,8 +62,8 @@ public final class WebSocketWriter {
   private final byte[] maskBuffer;
 
   public WebSocketWriter(boolean isClient, BufferedSink sink, Random random) {
-    if (sink == null) throw new NullPointerException("sink");
-    if (random == null) throw new NullPointerException("random");
+    if (sink == null) throw new NullPointerException("sink == null");
+    if (random == null) throw new NullPointerException("random == null");
     this.isClient = isClient;
     this.sink = sink;
     this.random = random;
@@ -117,7 +117,7 @@ public final class WebSocketWriter {
   }
 
   private void writeControlFrame(int opcode, Buffer payload) throws IOException {
-    if (closed) throw new IOException("Closed");
+    if (closed) throw new IOException("closed");
 
     int length = 0;
     if (payload != null) {
@@ -184,7 +184,7 @@ public final class WebSocketWriter {
 
   private void writeFrame(PayloadType payloadType, Buffer source, long byteCount,
       boolean isFirstFrame, boolean isFinal) throws IOException {
-    if (closed) throw new IOException("Closed");
+    if (closed) throw new IOException("closed");
 
     int opcode = OPCODE_CONTINUATION;
     if (isFirstFrame) {
@@ -215,7 +215,7 @@ public final class WebSocketWriter {
       if (byteCount <= PAYLOAD_MAX) {
         b1 |= (int) byteCount;
         sink.writeByte(b1);
-      } else if (byteCount <= Short.MAX_VALUE) {
+      } else if (byteCount <= 0xffffL) { // Unsigned short.
         b1 |= PAYLOAD_SHORT;
         sink.writeByte(b1);
         sink.writeShort((int) byteCount);
@@ -258,7 +258,7 @@ public final class WebSocketWriter {
     }
 
     @Override public void flush() throws IOException {
-      if (closed) throw new IOException("Closed");
+      if (closed) throw new IOException("closed");
 
       synchronized (sink) {
         sink.flush();
@@ -271,7 +271,7 @@ public final class WebSocketWriter {
 
     @SuppressWarnings("PointlessBitwiseExpression")
     @Override public void close() throws IOException {
-      if (closed) throw new IOException("Closed");
+      if (closed) throw new IOException("closed");
 
       int length = 0;
 

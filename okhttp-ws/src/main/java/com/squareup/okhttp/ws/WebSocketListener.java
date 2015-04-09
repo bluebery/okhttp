@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.squareup.okhttp.internal.ws;
+package com.squareup.okhttp.ws;
 
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
@@ -21,9 +21,8 @@ import java.io.IOException;
 import okio.Buffer;
 import okio.BufferedSource;
 
-import static com.squareup.okhttp.internal.ws.WebSocket.PayloadType;
+import static com.squareup.okhttp.ws.WebSocket.PayloadType;
 
-// TODO move to public API!
 /** Listener for server-initiated messages on a connected {@link WebSocket}. */
 public interface WebSocketListener {
   void onOpen(WebSocket webSocket, Request request, Response response) throws IOException;
@@ -31,6 +30,10 @@ public interface WebSocketListener {
   /**
    * Called when a server message is received. The {@code type} indicates whether the
    * {@code payload} should be interpreted as UTF-8 text or binary data.
+   *
+   * <p>Implementations <strong>must</strong> call {@code source.close()} before returning. This
+   * indicates completion of parsing the message payload and will consume any remaining bytes in
+   * the message.
    */
   void onMessage(BufferedSource payload, PayloadType type) throws IOException;
 
@@ -45,7 +48,7 @@ public interface WebSocketListener {
    * from a call to {@link WebSocket#close(int, String) close()} or as an unprompted
    * message from the server.
    *
-   * @param code The <a href="http://tools.ietf.org/html/rfc6455#section-7.4.1>RFC-compliant</a>
+   * @param code The <a href="http://tools.ietf.org/html/rfc6455#section-7.4.1">RFC-compliant</a>
    * status code.
    * @param reason Reason for close or an empty string.
    */

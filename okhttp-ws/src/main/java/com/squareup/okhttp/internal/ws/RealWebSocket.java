@@ -16,18 +16,17 @@
 package com.squareup.okhttp.internal.ws;
 
 import com.squareup.okhttp.internal.NamedRunnable;
-import com.squareup.okhttp.internal.Util;
+import com.squareup.okhttp.ws.WebSocket;
+import com.squareup.okhttp.ws.WebSocketListener;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.util.Random;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.Executor;
 import okio.Buffer;
 import okio.BufferedSink;
 import okio.BufferedSource;
 
 import static com.squareup.okhttp.internal.ws.WebSocketReader.FrameCallback;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 public abstract class RealWebSocket implements WebSocket {
   /** A close code which indicates that the peer encountered a protocol exception. */
@@ -45,14 +44,8 @@ public abstract class RealWebSocket implements WebSocket {
   private final Object closeLock = new Object();
 
   public RealWebSocket(boolean isClient, BufferedSource source, BufferedSink sink, Random random,
-      final WebSocketListener listener, final String url) {
+      final Executor replyExecutor, final WebSocketListener listener, final String url) {
     this.listener = listener;
-
-    // Pings come in on the reader thread. This executor contends with callers for writing pongs.
-    final ThreadPoolExecutor pongExecutor = new ThreadPoolExecutor(1, 1, 1, SECONDS,
-        new LinkedBlockingDeque<Runnable>(),
-        Util.threadFactory(String.format("OkHttp %s WebSocket", url), true));
-    pongExecutor.allowCoreThreadTimeOut(true);
 
     writer = new WebSocketWriter(isClient, sink, random);
     reader = new WebSocketReader(isClient, source, new FrameCallback() {
@@ -61,7 +54,7 @@ public abstract class RealWebSocket implements WebSocket {
       }
 
       @Override public void onPing(final Buffer buffer) {
-        pongExecutor.execute(new NamedRunnable("OkHttp %s WebSocket Pong", url) {
+        replyExecutor.execute(new NamedRunnable("OkHttp %s WebSocket Pong Reply", url) {
           @Override protected void execute() {
             try {
               writer.writePong(buffer);
@@ -75,8 +68,12 @@ public abstract class RealWebSocket implements WebSocket {
         listener.onPong(buffer);
       }
 
-      @Override public void onClose(int code, String reason) throws IOException {
-        peerClose(code, reason);
+      @Override public void onClose(final int code, final String reason) {
+        replyExecutor.execute(new NamedRunnable("OkHttp %s WebSocket Close Reply", url) {
+          @Override protected void execute() {
+            peerClose(code, reason);
+          }
+        });
       }
     });
   }
@@ -96,28 +93,28 @@ public abstract class RealWebSocket implements WebSocket {
   }
 
   @Override public BufferedSink newMessageSink(PayloadType type) {
-    if (writerSentClose) throw new IllegalStateException("Closed");
+    if (writerSentClose) throw new IllegalStateException("closed");
     return writer.newMessageSink(type);
   }
 
   @Override public void sendMessage(PayloadType type, Buffer payload) throws IOException {
-    if (writerSentClose) throw new IllegalStateException("Closed");
+    if (writerSentClose) throw new IllegalStateException("closed");
     writer.sendMessage(type, payload);
   }
 
   @Override public void sendPing(Buffer payload) throws IOException {
-    if (writerSentClose) throw new IllegalStateException("Closed");
+    if (writerSentClose) throw new IllegalStateException("closed");
     writer.writePing(payload);
   }
 
   /** Send an unsolicited pong with the specified payload. */
   public void sendPong(Buffer payload) throws IOException {
-    if (writerSentClose) throw new IllegalStateException("Closed");
+    if (writerSentClose) throw new IllegalStateException("closed");
     writer.writePong(payload);
   }
 
   @Override public void close(int code, String reason) throws IOException {
-    if (writerSentClose) throw new IllegalStateException("Closed");
+    if (writerSentClose) throw new IllegalStateException("closed");
 
     boolean closeConnection;
     synchronized (closeLock) {
@@ -134,8 +131,8 @@ public abstract class RealWebSocket implements WebSocket {
     }
   }
 
-  /** Called on the reader thread when a close frame is encountered. */
-  private void peerClose(int code, String reason) throws IOException {
+  /** Replies and closes this web socket when a close frame is read from the peer. */
+  private void peerClose(int code, String reason) {
     boolean writeCloseResponse;
     synchronized (closeLock) {
       readerSentClose = true;
@@ -145,11 +142,16 @@ public abstract class RealWebSocket implements WebSocket {
     }
 
     if (writeCloseResponse) {
-      // The reader thread will read no more frames so use it to send the response.
-      writer.writeClose(code, reason);
+      try {
+        writer.writeClose(code, reason);
+      } catch (IOException ignored) {
+      }
     }
 
-    closeConnection();
+    try {
+      closeConnection();
+    } catch (IOException ignored) {
+    }
 
     listener.onClose(code, reason);
   }
