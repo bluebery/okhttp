@@ -1,7 +1,12 @@
 OkHttp
 ======
-
 An HTTP & SPDY client for Android and Java applications. For more information see [the website][1] and [the wiki][2].
+
+Java 1.6 Comptibility Note
+---------------------
+This library should be Java 1.6 compatible except for okhttp-tests. If building
+this module with an IDE, make sure to remove the okhttp-tests module before
+building in order to avoid compilation errors.
 
 Download
 --------
