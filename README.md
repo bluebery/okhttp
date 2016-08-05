@@ -1,51 +1,20 @@
 OkHttp
 ======
-
 An HTTP & SPDY client for Android and Java applications. For more information see [the website][1] and [the wiki][2].
 
-Download
---------
+Java 1.6 Comptibility Note
+---------------------
+This library should be Java 1.6 compatible except for okhttp-tests. If building
+this module with an IDE, make sure to remove the okhttp-tests module before
+building in order to avoid compilation errors.
 
-Download [the latest JAR][3] or grab via Maven:
-```xml
-<dependency>
-  <groupId>com.squareup.okhttp</groupId>
-  <artifactId>okhttp</artifactId>
-  <version>2.3.0</version>
-</dependency>
-```
-or Gradle:
-```groovy
-compile 'com.squareup.okhttp:okhttp:2.3.0'
-```
+How to use
+----------
+Clone this repository and then build it with your favorite tool (tested with
+IntelliJ).
 
-Snapshots of the development version are available in [Sonatype's `snapshots` repository][snap].
-
-
-MockWebServer
--------------
-
-A library for testing HTTP, HTTPS, HTTP/2.0, and SPDY clients.
-
-MockWebServer coupling with OkHttp is essential for proper testing of SPDY and HTTP/2.0 so that code can be shared.
-
-### Download
-
-Download [the latest JAR][4] or grab via Maven:
-```xml
-<dependency>
-  <groupId>com.squareup.okhttp</groupId>
-  <artifactId>mockwebserver</artifactId>
-  <version>2.3.0</version>
-  <scope>test</scope>
-</dependency>
-```
-or Gradle:
-```groovy
-testCompile 'com.squareup.okhttp:mockwebserver:2.3.0'
-```
-
-
+See [here](https://github.com/square/okhttp) for the original repository's
+README and download information.
 
 License
 -------
