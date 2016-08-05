@@ -647,7 +647,7 @@ public final class HttpEngine {
     }
 
     if (request.header("User-Agent") == null) {
-      result.header("User-Agent", System.getProperty( Version.userAgent() ));
+      result.header("User-Agent", Version.userAgent());
     }
 
     return result.build();
